@@ -1,6 +1,6 @@
-# MISAQ — Product Requirements Document (V1)
+# MISAQ e Amanat — Product Requirements Document (V1)
 
-**Product:** MISAQ — Kameti Management PWA
+**Product:** MISAQ e Amanat — Kameti Management PWA
 **Version:** 1.0 (MVP)
 **Status:** Draft for build
 
@@ -71,12 +71,35 @@ One user can be a Manager on some Kametis and a Contributor on others simultaneo
 
 ### 4.8 Cycle Completion & Archive
 - Once every member has received their turn, the Kameti auto-moves to an **Archived** section on the dashboard.
-- From Archive, Manager can **Renew** with one tap — same members, amount, and frequency, prompting only for a new start date.
+- From Archive, Manager can **Renew** with one tap — same members, amount, and frequency, prompting only for a new start date and all these fields are also editable
 
 ### 4.9 Offline-First
 - Local database (Dexie/IndexedDB) is the read source of truth; UI never blocks on network.
 - Writes queue locally and sync to Firestore when back online.
 - App is installable, works offline as a PWA (app-shell + cached data).
+
+### 4.10 Performance and Responsiveness
+- The app must render the application shell and available local data without waiting for Firestore or any other network request.
+- Dashboard and Kameti detail views must show cached data immediately when available, with a visible stale, offline, syncing, or synced state where appropriate.
+- User actions that are safe to apply locally, including payment status changes, must provide immediate local feedback and synchronize in the background.
+- Opening a Kameti must load the current status first; historical periods and the full timeline load only when the user requests **Learn More**.
+- The dashboard must not maintain live listeners for every Kameti. Live updates are required only for the currently open Kameti or processing pool.
+- The app must remain usable on mid-range Android devices and constrained 4G connections, including while offline after the app shell and relevant data have been cached.
+- Route-specific and optional functionality must not block the initial shell: QR tools, archive history, drag/reorder tools, and non-selected language resources may load when needed.
+- Payment recording for a normal 5–15 member Kameti must remain fast enough for the Manager to complete a full period in under 60 seconds.
+- Animations must be brief, purposeful, and disabled or reduced when the device requests reduced motion.
+
+### 4.11 Data and Resource Efficiency
+- The app must minimize Firestore reads and writes to remain within Firebase Spark limits for a Manager running multiple active Kametis.
+- The app must not download period history, full payment history, or unrelated Kameti data during dashboard startup.
+- Repeated unsynchronized changes to the same record may be coalesced so only the latest valid state is sent when connectivity returns.
+- Cached data must remain available across normal app restarts and service-worker updates; an update must not delete queued writes or local Kameti data.
+- The app must avoid duplicate application-data caches that can diverge. Dexie/IndexedDB is the application read source of truth; any Firebase SDK persistence decision must not create a competing UI data source.
+
+### 4.12 Accessibility and Device Efficiency
+- Primary controls must be usable with a minimum 48px touch target, keyboard access where applicable, visible focus states, and readable contrast in bright outdoor conditions.
+- English, Urdu, and Roman Urdu must not cause clipped, overlapping, or unstable layouts; Urdu typography must allow for its larger line-height needs.
+- The app must avoid unnecessary background polling, per-item timers, continuous decorative animation, and other work that wastes battery or blocks the main thread.
 
 ---
 
@@ -97,6 +120,13 @@ Receive QR/link → Sign in → name onboarding → auto-joins Kameti (Processin
 - App is fully usable with no network connection for reading Kameti status.
 - Zero duplicate-join incidents on the last available slot under concurrent access.
 - App stays within Firebase Spark (free tier) limits for a Manager running multiple active Kametis.
+- Cached dashboard content is usable without a network connection and appears without an indefinite loading state.
+- A payment toggle gives visible local feedback immediately and does not wait for a network response.
+- A normal Kameti detail view loads current status without loading its complete historical timeline.
+- On a representative mid-range mobile device and constrained 4G connection, the initial screen is visually usable within 2 seconds and the main content is substantially loaded within 3 seconds after a cold visit; exact measured budgets are tracked in the implementation plan.
+- Core interaction latency remains below 200ms for local navigation, payment toggles, language switching, and opening cached Kameti data under normal conditions.
+- Cumulative Layout Shift remains below 0.1 on core screens, including English and Urdu layouts.
+- A production build provides an installable PWA shell that can reopen offline without losing local data or pending writes.
 
 ---
 
@@ -120,3 +150,21 @@ Receive QR/link → Sign in → name onboarding → auto-joins Kameti (Processin
 - PDF/Excel export, advanced reports.
 - Native Android/iOS packaging.
 - Any real payment gateway integration.
+
+---
+
+## 9. Performance and Quality Boundaries
+
+The performance requirements above are product requirements, not permission to add unnecessary infrastructure. V1 should remain a client-heavy PWA using Firebase-managed services, Dexie/IndexedDB, and the single-writer Kameti model.
+
+The product does not require:
+
+- a custom backend, Redis, containers, server-side rendering, GraphQL, or native mobile packaging;
+- background push notifications or continuous real-time listeners for every dashboard item;
+- list virtualization for normal 5–20 member Kametis;
+- complex caching layers outside Dexie and the app-shell service worker;
+- encryption of the local cache beyond browser and device security in V1.
+
+Performance work must preserve the security boundary: Firestore Rules remain authoritative for membership, manager writes, payment records, member-cap enforcement, and server timestamps. Client-side caching and optimistic UI must never be treated as authorization.
+
+The implementation plan defines the measurement method, budgets, data-query strategy, sync behavior, bundle strategy, and regression tests for these requirements.
